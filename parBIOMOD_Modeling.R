@@ -59,6 +59,7 @@ parBIOMOD_Modeling <- function(data, models = c("GLM", "GBM", "GAM", "CTA", "ANN
   rm(calib.lines)
   .Models.print.modeling.summary(mod.prep.dat, models)
   
+  #### snowfall - Parallelization
   require(snowfall)
   sfInit(parallel=T, cpu=20)
   modeling.out <- sfLapply(mod.prep.dat, .Biomod.Models.loop,
@@ -67,6 +68,7 @@ parBIOMOD_Modeling <- function(data, models = c("GLM", "GBM", "GAM", "CTA", "ANN
                            SavePred = SaveObj, scal.models = rescal.all.models)
   sfStop(nostop=F)
   
+  #### parallel - Parallelization
   # require(parallel)
   # elves <- makeCluster(20); clusterExport(elves, c('mod.prep.dat',
   #                                                  '.Biomod.Models.loop',
@@ -77,7 +79,6 @@ parBIOMOD_Modeling <- function(data, models = c("GLM", "GBM", "GAM", "CTA", "ANN
   #                                                  'models.eval.meth',
   #                                                  'SaveObj',
   #                                                  'rescal.all.models'), envir = environment()); clusterEvalQ(elves, library(biomod2))
-  # 
   # modeling.out <- parLapply(cluster = elves, mod.prep.dat, .Biomod.Models.loop, 
   #                          modeling.id = models.out@modeling.id, Model = models, 
   #                          Options = models.options, VarImport = VarImport, mod.eval.method = models.eval.meth, 
