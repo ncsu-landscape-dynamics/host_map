@@ -1,4 +1,4 @@
-parBIOMOD_Modeling <- function(data, models = c("GLM", "GBM", "GAM", "CTA", "ANN", 
+function(data, models = c("GLM", "GBM", "GAM", "CTA", "ANN", 
                                                 "SRE", "FDA", "MARS", "RF", "MAXENT.Phillips", "MAXENT.Phillips.2"), 
                                models.options = NULL, NbRunEval = 1, DataSplit = 100, Yweights = NULL, 
                                Prevalence = NULL, VarImport = 0, models.eval.meth = c("KAPPA", 
