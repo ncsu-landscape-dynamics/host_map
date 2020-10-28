@@ -107,7 +107,7 @@ myBiomodEM <- BIOMOD_EnsembleModeling(modeling.output = myBiomodModelOut,
                                       prob.median = F,
                                       committee.averaging = F,
                                       prob.mean.weight = T,
-                                      prob.mean.weight.decay = 'proportional' )
+                                      prob.mean.weight.decay = 'proportional')
 
 #myBiomodEM # print summary
 get_evaluations(myBiomodEM) # get evaluation scores

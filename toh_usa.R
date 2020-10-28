@@ -51,12 +51,13 @@ aa.bien <- read.csv('H:\\Shared drives\\Data\\Table\\Global\\Ailanthus.BIEN.csv'
 aa.pts <- SpatialPoints(coords = unique(rbind(aa.gbif, aa.bien)))
 aa.pts <- crop(aa.pts, usa)
 
+# load the environmental raster layers (could be any supported format by the raster package)
 # Environmental variables extracted from Worldclim 
-#myExpl <- raster::getData('worldclim', download=T, var='bio', res=10) #myExpl <- stack(myExpl[[1]], myExpl[[7]], myExpl[[12]])
+#myExpl <- raster::getData('worldclim', download=T, var='bio', res=10)
 biodir <- 'H:\\Shared drives\\APHIS  Projects\\shared resources\\data\\worldclim1k\\US\\'
 biovars <- stack(lapply(X=list.files(biodir), FUN=function(X){raster(paste(biodir, X, sep=''))}))
 myExpl <- crop(stack(biovars[[1]], biovars[[6]], biovars[[12]]), extent(usa))
-#myExpl <- stack(aggregate(myExpl, 6))
+myExpl <- stack(aggregate(myExpl, 100))
 myExpl <- crop(myExpl, extent(usa))
 myExpl <- stack(raster::mask(myExpl, usa))
 aa.ras <- rasterize(x=aa.pts, y=myExpl[[1]], fun='count', background=0); aa.ras <- (aa.ras*(myExpl[[1]]*0+1))>0
@@ -64,7 +65,6 @@ a2.pts <- rasterToPoints(aa.ras)
 myRespName <- 'A_altissima'
 myResp <- a2.pts[, 3] # the presence/absences data for our species
 myRespXY <- a2.pts[, c(1,2)] # the XY coordinates of species data
-# load the environmental raster layers (could be any supported format by the raster package)
 
 myBiomodData <- BIOMOD_FormatingData(resp.var = myResp,
                                      expl.var = myExpl,
@@ -89,22 +89,21 @@ myBiomodModelOut <- biomod2::BIOMOD_Modeling(myBiomodData,
                                                         'GBM',
                                                         'MAXENT.Phillips'),
                                              models.options = myBiomodOption,
-                                             NbRunEval=1, #5
-                                             DataSplit=80,
-                                             Prevalence=0.5,
-                                             VarImport=3,
+                                             NbRunEval = 1, #5
+                                             DataSplit = 80,
+                                             Prevalence = 0.5,
+                                             VarImport = 3,
                                              models.eval.meth = 'TSS',
                                              SaveObj = TRUE,
                                              rescal.all.models = FALSE,
                                              do.full.models = FALSE,
-                                             modeling.id = paste(myRespName,"FirstModeling",sep=""))
+                                             modeling.id=paste(myRespName,"FirstModeling",sep=""))
 
 
 myBiomodModelEval <- get_evaluations(myBiomodModelOut) # get all models evaluation
 dimnames(myBiomodModelEval) # print the dimnames of this object
 myBiomodModelEval[c('TSS'),"Testing.data",,,] # print the eval scores of all selected models
 vars_importance <- data.frame(get_variables_importance(myBiomodModelOut)) # print variable importances
-
 # vars_ranked <- data.frame('SRE'=as.integer(rank(vars_importance[,1])),
 #                           'GLM'=as.integer(rank(vars_importance[,2])),
 #                           'GAM'=as.integer(rank(vars_importance[,3])),
@@ -122,7 +121,7 @@ myBiomodEM <- BIOMOD_EnsembleModeling(modeling.output = myBiomodModelOut,
                                       chosen.models = 'all',
                                       em.by='all',
                                       eval.metric = c('TSS'),
-                                      eval.metric.quality.threshold = c(0.7),
+                                      eval.metric.quality.threshold = c(0.5),
                                       prob.mean = F,
                                       prob.cv = F, #don't use
                                       prob.ci = F, #prob.ci.alpha = 0.05,

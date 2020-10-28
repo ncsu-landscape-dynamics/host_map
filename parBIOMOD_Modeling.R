@@ -61,7 +61,7 @@ parBIOMOD_Modeling <- function(data, models = c("GLM", "GBM", "GAM", "CTA", "ANN
   
   #### snowfall - Parallelization
   require(snowfall)
-  sfInit(parallel=T, cpu=20)
+  sfInit(parallel=T, cpu=20) # usuing 
   modeling.out <- sfLapply(mod.prep.dat, .Biomod.Models.loop,
                            modeling.id = models.out@modeling.id, Model = models,
                            Options = models.options, VarImport = VarImport, mod.eval.method = models.eval.meth,
