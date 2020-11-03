@@ -103,7 +103,7 @@ source('C:\\Users\\bjselige\\host_map\\parBIOMOD_Modeling.R')
 environment(parBIOMOD_Modeling) <- asNamespace('biomod2')
 assignInNamespace("BIOMOD_Modeling", parBIOMOD_Modeling, ns = "biomod2")
 
-# 3. Computing the models
+# 4. Computing the parallel model
 t2 <- system.time(biomod2::BIOMOD_Modeling(myBiomodData,
                                            models = c('SRE',
                                                       'GLM',
