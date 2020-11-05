@@ -1,4 +1,4 @@
-function(data, models = c("GLM", "GBM", "GAM", "CTA", "ANN", 
+parBIOMOD_Modeling <- function(data, models = c("GLM", "GBM", "GAM", "CTA", "ANN", 
                                                 "SRE", "FDA", "MARS", "RF", "MAXENT.Phillips", "MAXENT.Phillips.2"), 
                                models.options = NULL, NbRunEval = 1, DataSplit = 100, Yweights = NULL, 
                                Prevalence = NULL, VarImport = 0, models.eval.meth = c("KAPPA", 
@@ -60,30 +60,32 @@ function(data, models = c("GLM", "GBM", "GAM", "CTA", "ANN",
   .Models.print.modeling.summary(mod.prep.dat, models)
   
   #### snowfall - Parallelization
-  require(snowfall)
-  sfInit(parallel=T, cpu=20) # usuing 
-  modeling.out <- sfLapply(mod.prep.dat, .Biomod.Models.loop,
+  # require(snowfall)
+  # sfInit(parallel=T, cpu=32) 
+  # modeling.out <- sfLapply(mod.prep.dat, .Biomod.Models.loop,
+  #                          modeling.id = models.out@modeling.id, Model = models,
+  #                          Options = models.options, VarImport = VarImport, mod.eval.method = models.eval.meth,
+  #                          SavePred = SaveObj, scal.models = rescal.all.models)
+  # sfStop(nostop=F)
+  
+  #### parallel - Parallelization
+  require(parallel)
+  elves <- makeCluster(20); clusterExport(elves, c('mod.prep.dat',
+                                                   '.Biomod.Models.loop',
+                                                   'models.out',
+                                                   'models',
+                                                   'models.options',
+                                                   'VarImport',
+                                                   'models.eval.meth',
+                                                   'SaveObj',
+                                                   'rescal.all.models'),
+                                          envir = environment()); clusterEvalQ(elves, library(biomod2))
+  
+  modeling.out <- parLapply(elves, mod.prep.dat, .Biomod.Models.loop,
                            modeling.id = models.out@modeling.id, Model = models,
                            Options = models.options, VarImport = VarImport, mod.eval.method = models.eval.meth,
                            SavePred = SaveObj, scal.models = rescal.all.models)
-  sfStop(nostop=F)
-  
-  #### parallel - Parallelization
-  # require(parallel)
-  # elves <- makeCluster(20); clusterExport(elves, c('mod.prep.dat',
-  #                                                  '.Biomod.Models.loop',
-  #                                                  'models.out',
-  #                                                  'models',
-  #                                                  'models.options',
-  #                                                  'VarImport',
-  #                                                  'models.eval.meth',
-  #                                                  'SaveObj',
-  #                                                  'rescal.all.models'), envir = environment()); clusterEvalQ(elves, library(biomod2))
-  # modeling.out <- parLapply(cluster = elves, mod.prep.dat, .Biomod.Models.loop, 
-  #                          modeling.id = models.out@modeling.id, Model = models, 
-  #                          Options = models.options, VarImport = VarImport, mod.eval.method = models.eval.meth, 
-  #                          SavePred = SaveObj, scal.models = rescal.all.models)
-  # closeAllConnections()
+  closeAllConnections()
   
   models.out@models.computed <- .transform.outputs.list(modeling.out, 
                                                         out = "models.run")
