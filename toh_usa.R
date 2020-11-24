@@ -56,20 +56,25 @@ aa.pts <- crop(aa.pts, usa)
 #myExpl <- raster::getData('worldclim', download=T, var='bio', res=10)
 biodir <- 'H:\\Shared drives\\APHIS  Projects\\shared resources\\data\\worldclim1k\\US\\'
 biovars <- stack(lapply(X=list.files(biodir), FUN=function(X){raster(paste(biodir, X, sep=''))}))
-myExpl <- crop(stack(biovars[[1]], biovars[[6]], biovars[[12]]), extent(usa))
-myExpl <- stack(aggregate(myExpl, 100))
+roads.d <- raster('H:\\Shared drives\\APHIS  Projects\\shared resources\\data\\Rails_Roads\\Products_generated_from_Rails_Roads\\roads.distance.tif')
+roads.d <- resample(roads.d, biovars[[1]], method='bilinear')
+myExpl <- crop(stack(biovars[[1]], biovars[[6]], biovars[[12]], roads.d), extent(usa))
+#myExpl <- stack(aggregate(myExpl, 100))
 myExpl <- crop(myExpl, extent(usa))
 myExpl <- stack(raster::mask(myExpl, usa))
 aa.ras <- rasterize(x=aa.pts, y=myExpl[[1]], fun='count', background=0); aa.ras <- (aa.ras*(myExpl[[1]]*0+1))>0
 a2.pts <- rasterToPoints(aa.ras)
 myRespName <- 'A_altissima'
 myResp <- a2.pts[, 3] # the presence/absences data for our species
+myResp[myResp==0] <- NA # setting 'true absences' to undefined
 myRespXY <- a2.pts[, c(1,2)] # the XY coordinates of species data
 
 myBiomodData <- BIOMOD_FormatingData(resp.var = myResp,
                                      expl.var = myExpl,
                                      resp.xy = myRespXY,
-                                     resp.name = myRespName)
+                                     resp.name = myRespName,
+                                     PA.nb.rep = 1,
+                                     PA.nb.absences = sum(myResp, na.rm=T))
 myBiomodData
 plot(myBiomodData)
 
@@ -86,8 +91,9 @@ myBiomodModelOut <- biomod2::BIOMOD_Modeling(myBiomodData,
                                                         'MARS',
                                                         'GAM',
                                                         'ANN',
-                                                        'GBM',
-                                                        'MAXENT.Phillips'),
+                                                        'GBM'
+                                                        , 'MAXENT.Phillips.2'
+                                                        ),
                                              models.options = myBiomodOption,
                                              NbRunEval = 1, #5
                                              DataSplit = 80,
@@ -148,3 +154,20 @@ myBiomodEF <- BIOMOD_EnsembleForecasting(EM.output = myBiomodEM,
                                          projection.output = myBiomodProj)
 
 plot(myBiomodEF) # reduce layer names for plotting convegences
+
+#### output plot
+borders <- usa
+rast <- myBiomodEF@proj@val
+rpts <- rasterToPoints(rast)
+rdf <- as.data.frame(rpts)
+ggsdm <- ggplot() + geom_raster(data=rdf, aes(x=x, y=y, fill=rdf[,3])) + 
+  geom_path(data=borders, aes(x=long, y=lat, group=group), col='white', lwd=1.1, alpha=.3) + 
+  scale_fill_continuous(type='viridis') + 
+  theme_void() + theme(legend.position='none')
+
+png(paste('C:\\Users\\bjselige\\Documents\\Tree_of_Heaven\\Figures\\usa.', 
+          gsub(':', '', substr(Sys.time(), 12, 19)), '.png', sep=''), 
+    height=1080, width=2160)
+
+plot(ggsdm)
+dev.off()
