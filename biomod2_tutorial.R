@@ -67,12 +67,11 @@ myBiomodOption <- BIOMOD_ModelingOptions()
 
 # 3. Computing the models
 myBiomodModelOut <- BIOMOD_Modeling(myBiomodData,
-                                    models = c('SRE',
+                                    models = c(#'SRE', #'CTA',
                                                'GLM',
                                                'GAM',
                                                'MARS',
                                                'FDA',
-                                               'CTA',
                                                'GBM',
                                                'RF',
                                                'ANN',

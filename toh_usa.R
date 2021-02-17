@@ -74,6 +74,7 @@ myBiomodData <- BIOMOD_FormatingData(resp.var = myResp,
                                      resp.xy = myRespXY,
                                      resp.name = myRespName,
                                      PA.nb.rep = 1,
+                                     PA.strategy = 'random',
                                      PA.nb.absences = sum(myResp, na.rm=T))
 myBiomodData
 plot(myBiomodData)
@@ -83,19 +84,16 @@ myBiomodOption <- BIOMOD_ModelingOptions()
 
 # 3. Computing the models
 myBiomodModelOut <- biomod2::BIOMOD_Modeling(myBiomodData,
-                                             models = c('SRE',
-                                                        'GLM',
-                                                        'CTA',
-                                                        'FDA',
-                                                        'RF',
-                                                        'MARS',
-                                                        'GAM',
-                                                        'ANN',
-                                                        'GBM'
-                                                        , 'MAXENT.Phillips.2'
-                                                        ),
+                                             models = c(#'CTA', 'SRE',  'MAXENT.Phillips','MAXENT.Phillips.2'
+                                               'GLM',
+                                               'GAM',
+                                               'MARS',
+                                               'FDA',
+                                               'GBM',
+                                               'RF',
+                                               'ANN'),
                                              models.options = myBiomodOption,
-                                             NbRunEval = 1, #5
+                                             NbRunEval = 5,
                                              DataSplit = 80,
                                              Prevalence = 0.5,
                                              VarImport = 3,
@@ -155,19 +153,21 @@ myBiomodEF <- BIOMOD_EnsembleForecasting(EM.output = myBiomodEM,
 
 plot(myBiomodEF) # reduce layer names for plotting convegences
 
-#### output plot
-borders <- usa
-rast <- myBiomodEF@proj@val
-rpts <- rasterToPoints(rast)
-rdf <- as.data.frame(rpts)
-ggsdm <- ggplot() + geom_raster(data=rdf, aes(x=x, y=y, fill=rdf[,3])) + 
-  geom_path(data=borders, aes(x=long, y=lat, group=group), col='white', lwd=1.1, alpha=.3) + 
-  scale_fill_continuous(type='viridis') + 
-  theme_void() + theme(legend.position='none')
+pred.out <- myBiomodEF@proj@val[[1]]
+values(pred.out)  <- rescale(values(pred.out), to=c(0,1),
+                             from=c(min(values(pred.out), na.rm=T), max(values(pred.out), na.rm=T)))
+writeRaster(pred.out, filename = 'C:\\Users\\bjselige\\Desktop\\toh.conus_ensemble.tif', format="GTiff")
 
-png(paste('C:\\Users\\bjselige\\Documents\\Tree_of_Heaven\\Figures\\usa.', 
-          gsub(':', '', substr(Sys.time(), 12, 19)), '.png', sep=''), 
-    height=1080, width=2160)
-
-plot(ggsdm)
-dev.off()
+# #### output plot
+# borders <- usa
+# rast <- myBiomodEF@proj@val
+# rpts <- rasterToPoints(rast)
+# rdf <- as.data.frame(rpts)
+# ggsdm <- ggplot() + geom_raster(data=rdf, aes(x=x, y=y, fill=rdf[,3])) + 
+#   geom_path(data=borders, aes(x=long, y=lat, group=group), col='white', lwd=1.1, alpha=.3) + 
+#   scale_fill_continuous(type='viridis') + 
+#   theme_void() + theme(legend.position='none')
+# 
+# png(paste('C:\\Users\\bjselige\\Documents\\Tree_of_Heaven\\Figures\\usa.', 
+#           gsub(':', '', substr(Sys.time(), 12, 19)), '.png', sep=''), 
+#     height=1080, width=2160); plot(ggsdm); dev.off()
