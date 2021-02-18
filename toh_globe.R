@@ -48,9 +48,12 @@ require(folderfun)
 require(BIEN)
 require(scales)
 
+path.loc <- '' #Set this to where you want any outputs to be put locally
+path.web <- 'H:\\Shared drives\\Data\\'
+
 #### Gather data ####
-aa.gbif <- read.csv('H:\\Shared drives\\Data\\Table\\Global\\Ailanthus.GBIF.csv')[, c(2,3)]; names(aa.gbif) <- c('Longitude', 'Latitude')
-aa.bien <- read.csv('H:\\Shared drives\\Data\\Table\\Global\\Ailanthus.BIEN.csv')[, c('Longitude', 'Latitude')]
+aa.gbif <- read.csv(paste(path.web, 'Table\\Global\\Ailanthus.GBIF.csv', sep=''))[, c(2,3)]; names(aa.gbif) <- c('Longitude', 'Latitude')
+aa.bien <- read.csv(paste(path.web, 'Table\\Global\\Ailanthus.BIEN.csv', sep=''))[, c('Longitude', 'Latitude')]
 aa.pts <- SpatialPoints(coords = unique(rbind(aa.gbif, aa.bien)))
 
 # load the environmental raster layers (could be any supported format by the raster package)
@@ -148,7 +151,7 @@ plot(myBiomodEF) # reduce layer names for plotting convegences
 pred.out <- myBiomodEF@proj@val[[1]]
 values(pred.out)  <- rescale(values(pred.out), from=c(min(values(pred.out), na.rm=T), max(values(pred.out), na.rm=T)),
                              to=c(0,1))
-writeRaster(pred.out, filename = 'C:\\Users\\bjselige\\Desktop\\toh.global_ensemble.tif', format="GTiff", overwrite=T)
+writeRaster(pred.out, filename = paste(path.loc, 'toh.global_ensemble.tif', sep=''), format="GTiff", overwrite=T)
 
 ###### Plotting
 # #borders <- 
