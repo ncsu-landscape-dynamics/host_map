@@ -1,58 +1,86 @@
-get_Envi <- function(bio=T, pop=T, rnr=T, soil=T){
-  # 1. load data
-  if(bio==F){bio <- NULL}
+get_Envi <- function(borders=NULL, bio=T, pop=T, rnr=T, soil=T, res=1){
+  require(terra)
+  
   if(bio==T){
-  biovars <- raster::getData('worldclim', download=T, var='bio', res=10)
-  biovars <- crop(biovars, extent(usa))
-  #biodir <- 'C:\\Users\\bjselige\\Documents\\localdata\\US\\'
-  #biodir <- 'Q:\\Shared drives\\APHIS  Projects\\shared resources\\data\\worldclim1k\\US\\'
-  #biovars <- stack(lapply(X=list.files(biodir), FUN=function(X){suppressWarnings(raster(paste(biodir, X, sep='')))}))
-  names(biovars) <-  c('Mean Annual Temp', 'Mean Diurnal Range', 'Isothermality',
-                       'Temp Seasonality', 'Max Temp Warmest Month', 'Min Temp Coldest Month',
-                       'Temp Annual Range', 'Mean Temp Wettest Quarter', 'Mean Temp Driest Quarter',
-                       'Mean Temp Warmest Quarter', 'Mean Temp Coldest Quarter', 'Annual Precip',
-                       'Precip Wettest Month', 'Precip Driest Month', 'Precip Seasonality',
-                       'Precip Wettest Quarter', 'Precip Driest Quarter', 'Precip Warmest Quarter', 'Precip Coldest Quarter')
+    biodir <- 'C:\\Users\\bjselige\\Documents\\localdata\\wc2.0_30s_bio\\'
+    #biodir <- 'Q:\\Shared drives\\APHIS  Projects\\shared resources\\data\\worldclim1k\\US\\'
+    #biovars <- suppressWarnings(raster::getData('worldclim', download=T, var='bio', res=5))
+    #biovars <- stack(lapply(X=list.files(biodir, full.names=T), FUN=function(X){suppressWarnings(raster(X))}))
+    biovars <- rast(list.files(biodir, full.names=T))
+    #biovars <- terra::resample(biovars, base, method='bilinear', threads=T)
+    # biovars <- terra::crop(biovars, borders)
+    # biovars <- terra::mask(biovars, borders)
+    names(biovars) <-  c('Mean Annual Temp', 'Mean Diurnal Range', 'Isothermality', 'Temp Seasonality',
+                         'Max Temp Warmest Month', 'Min Temp Coldest Month', 'Temp Annual Range',
+                         'Mean Temp Wettest Quarter', 'Mean Temp Driest Quarter', 'Mean Temp Warmest Quarter',
+                         'Mean Temp Coldest Quarter', 'Annual Precip', 'Precip Wettest Month',
+                         'Precip Driest Month', 'Precip Seasonality', 'Precip Wettest Quarter',
+                         'Precip Driest Quarter', 'Precip Warmest Quarter', 'Precip Coldest Quarter')
   }
   
-  if(rnr==F){rnr <- NULL}
-  if(rnr==T){#roaddir <- 'Q:\\Shared drives\\APHIS  Projects\\shared resources\\data\\Rails_Roads\\Products_generated_from_Rails_Roads\\'
-  roaddir <- 'C:\\Users\\bjselige\\Documents\\localdata\\Products_generated_from_Rails_Roads\\'
-  roads.d <- suppressWarnings(raster(paste(roaddir, 'roads.distance.tif', sep='')))
-  rails.d <- suppressWarnings(raster(paste(roaddir, 'rails.distance.1km.tif', sep='')))
-  roads.d <- resample(roads.d, biovars[[1]], method='bilinear')
-  rails.d <- resample(rails.d, biovars[[1]], method='bilinear')
-  rnr.d <- min(stack(roads.d, rails.d))
-  rnr.2 <- stack(roads.d, rails.d, rnr.d); names(rnr.2) <- c('Roads Dist.', 'Rails Dist.', 'Roads & Rails Dist.')
+  if(rnr==T){
+    roaddir <- 'C:\\Users\\bjselige\\Documents\\localdata\\Products_generated_from_Rails_Roads\\'
+  # roaddir <- 'Q:\\Shared drives\\APHIS  Projects\\shared resources\\data\\Rails_Roads\\Products_generated_from_Rails_Roads\\'
+  roads.d <- rast(paste(roaddir, 'roads.dist.NE2.tif', sep=''))
+  rails.d <- rast(paste(roaddir, 'rails.dist.NE2.tif', sep=''))
+  roads.uk <- rast(paste(roaddir, 'roads.dist.UK.tif', sep=''))
+  rails.uk <- rast(paste(roaddir, 'rails.dist.UK.tif', sep=''))
+  roads.d <- terra::merge(roads.d, roads.uk)
+  rails.d <- terra::merge(rails.d, rails.uk)
+  roads.d <- terra::crop(roads.d, extent(borders)) 
+  rails.d <- terra::crop(rails.d, extent(borders))
+  roads.d <- terra::resample(roads.d, biovars[[1]], method='bilinear', threads=T)
+  rails.d <- terra::resample(rails.d, biovars[[1]], method='bilinear', threads=T)
+  rnr.2 <- stack(roads.d, rails.d); names(rnr.2) <- c('Roads Dist', 'Rails Dist')
+  # rnr.d <- min(stack(roads.d, rails.d)); rnr.2 <- stack(roads.d, rails.d, rnr.d); names(rnr.2) <- c('Roads Dist.', 'Rails Dist.', 'Roads & Rails Dist.')
   }
   
+  if(pop==T){
+    pop.den <- rast('C:\\Users\\bjselige\\Downloads\\gpw-v4-population-density-rev11_2020_30_sec_tif\\gpw_v4_population_density_rev11_2020_30_sec.tif')
+    # pop.den <- terra::crop(pop.den, extent(borders))
+    # pop.den <- terra::mask(pop.den, borders)
+    # pop.den <- terra::resample(pop.den, biovars[[1]], method='bilinear', threads=T)
+    # pop.den <- stack(pop.den)
+    names(pop.den) <- 'Population Density'
+  }
+  
+  if(soil==T){soildir <- 'C:\\Users\\bjselige\\Desktop\\Soil_OpenLandMap\\resample\\'
+  soil.files <- c('Soil_pH_0cm.tif', 'Soil_pH_mean.1km.tif', 'Soil_pH_200cm.tif',
+                  'Soil_h2o_33kpa_0cm.tif', 'Soil_h2o_33kpa_mean.1km.tif', 'Soil_h2o_33kpa_200cm.tif',
+                  'Soil_h2o_1500kpa_0cm.tif', 'Soil_h2o_1500kpa_mean.1km.tif', 'Soil_h2o_1500kpa_200cm.tif')
+  sl <- rast(paste(soildir, soil.files, sep=''))
+  names(sl) <- c('pH_0cm', 'pH_mean', 'pH_200cm', 'h2o_33_0cm', 'h2o_33_mean',
+                 'h2o_33_200cm', 'h2o_15k_0cm', 'h2o_15k_mean', 'h2o_15k_200cm')
+  }
+  
+  if(bio==F){biovars <- NULL}
+  if(rnr==F){rnr.2 <- NULL}
   if(pop==F){pop.den <- NULL}
-  if(pop==T){popdir <- 'C:\\Users\\bjselige\\Downloads\\gpw-v4-population-density-rev11_2020_30_sec_asc\\'
-  if(file.exists(paste(popdir, 'gpw_v4_population_density_rev11_2020_30_sec_12.asc', sep=''))==F){
-    popdir <- 'C:\\Users\\bjselige\\Downloads\\gpw-v4-population-density-rev11_2020_30_sec_asc\\'
-    pop.den <- merge(raster(paste(popdir, 'gpw_v4_population_density_rev11_2020_30_sec_1.asc', sep='')),
-                     raster(paste(popdir, 'gpw_v4_population_density_rev11_2020_30_sec_2.asc', sep='')))
-    names(pop.den) <- 'popl.density'
-    pop.den <- crop(pop.den, extent(biovars[[1]]))
-    pop.den <- resample(pop.den, biovars[[1]], method='bilinear')
-    pop.den[pop.den<0] <- 0
-    pop.den2 <- pop.den
-    pop.den2[pop.den<1] <- 0.1
-    writeRaster(pop.den, paste(popdir, 'gpw_v4_population_density_rev11_2020_30_sec_12.asc', sep=''), overwrite=T)
-  }
-  pop.den <- raster(paste(popdir, 'gpw_v4_population_density_rev11_2020_30_sec_12.asc', sep=''))
-  pop.den <- resample(pop.den, biovars[[1]], method='bilinear'); names(pop.den) <- 'Population Density'
-  }
-
-  if(soil==F){soil <- NULL}
-  if(soil==T){#soildir <- 'Q:\\Shared drives\\Data\\Raster\\USA\\soils\\'
-  soildir <- 'C:\\Users\\bjselige\\Documents\\localdata\\soils\\'
-  sl <- stack(lapply(X=list.files(soildir), FUN=function(X){suppressWarnings(raster(paste(soildir, X, sep='')))}))
-  names(sl) <- c('Soil Density', 'Soil Clay', 'Soil Organic C', 'Soil pH', 'Soil Sand', 'Soil Texture', 'Soil Moisture')
-  sl <- sl[[c(1:5,7)]]
+  if(soil==F){sl <- NULL}
+  
+  # if(is.null(borders)){
+  #   borders <- vect('C:\\Users\\bjselige\\Downloads\\ne_10m_admin_0_countries_lakes\\ne_10m_admin_0_countries_lakes.shp')
+  # }
+  # if(file.exists('C:\\Users\\bjselige\\Documents\\localdata\\base.tif')==F){
+  #   wrld <- vect('C:\\Users\\bjselige\\Downloads\\ne_10m_admin_0_countries_lakes\\ne_10m_admin_0_countries_lakes.shp')
+  #   biodir <- 'C:\\Users\\bjselige\\Documents\\localdata\\wc2.0_30s_bio\\'
+  #   biovars <- rast(list.files(biodir, full.names=T))
+  #   base <- biovars[[1]]/biovars[[1]]
+  #   base <- terra::mask(base, wrld, filename='C:\\Users\\bjselige\\Documents\\localdata\\base.tif')
+  # }
+  # if(file.exists('C:\\Users\\bjselige\\Documents\\localdata\\base.tif')){
+  #   base <- rast('C:\\Users\\bjselige\\Documents\\localdata\\base.tif')
+  #   }
+  # if(ext(borders)!=ext(base)){}
+  
+  envi <- c(biovars, pop.den, rnr.2, sl)
+  
+  if(res>1){envi <- terra::aggregate(envi, fact=res)}
+  if(!is.null(borders)){
+    envi <- crop(envi, ext(borders))
+    envi <- mask(envi, borders, threads=T)
   }
   
-  envi <- stack(biovars, pop.den, rnr.2, soil)
   return(envi)
 }
 # cl <- raster('C:\\Users\\bjselige\\Desktop\\nlcd\\cultivated_xra30.tif',

@@ -13,20 +13,35 @@ EM_mod <- function(spname){
   require(stringr)
   require(klaR)
   
-
+  
   #update w world borders
-   usa <- spTransform(readOGR('C:\\Users\\bjselige\\Documents\\us_lower_48_states.gpkg'), 
-                      CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
+  borders <- vect('C:\\Users\\bjselige\\Downloads\\ne_10m_admin_0_countries_lakes\\ne_10m_admin_0_countries_lakes.shp')
+  
+  
+  
+  # bbox <- c(24.5, -125, 49.5, -66.5)
+  # us_can <- borders[borders$admin%in%c('United States of America', 'Canada'),]#, 'Mexico'),]
+  # us_can <- us_can[which(!us_can$name%in%c('Alaska', 'Hawaii', 'Nunavut', 'Yukon', 'Northwest Territories')),]
+  # l48 <- us_can[which(us_can$admin=='United States of America'),]
+  # us_can <- crop(us_can, extent(l48))
+  
+  # bbox <- c(49.5, -8, 59.5, 2)
+  # uk_main <- borders[borders$admin%in%c('United Kingdom'),]
+  # uk_main <- uk_main[which(!uk_main$region%in%c('Northern Ireland')),]
+  # uk_main <- crop(uk_main, extent(c(bbox[2], bbox[4], bbox[1], bbox[3])))
   
   # 
-  envi <- get_Envi()
+  source('C:\\Users\\bjselige\\host_map\\get_Envi.R')
+  envi <- get_Envi(rnr=F)
+
+  
   
   # Create clusters of related variables among variables in the environmental layer
   envi.cc <- corclust(x=data.frame(values(envi)))
   envi.cp <- plot(envi.cc, mincor=.7, selection='numeric')
-  envi.cv <- cvtree(envi.cc, k=6)
+  envi.cv <- cvtree(envi.cc, k=6) #update k so its dynamic
   
-  
+  source('C:\\Users\\bjselige\\host_map\\get_pts.1.R')
   pts <- get_pts.1(spname)
   pts <- data.frame('longitude'=as.numeric(pts$longitude), 'latitude'=as.numeric(pts$latitude))
   pts <- pts[which(!is.na(pts$latitude)),]
@@ -42,7 +57,10 @@ EM_mod <- function(spname){
   myRespXY <- pts.2[, c(1,2)] # the XY coordinates of species data
   
   #var impo goes here
+  source('C:\\Users\\bjselige\\host_map\\var.imp.R')
   myExpl.sel <- var.select()
+  
+  myOptions <- BIOMOD_ModelingOptions()
   
   myData <- BIOMOD_FormatingData(resp.var = myResp,
                                  expl.var = myExpl.sel,
@@ -67,7 +85,7 @@ EM_mod <- function(spname){
                                        models.eval.meth = myEvals,
                                        SaveObj = T, # recommended to leave true
                                        rescal.all.models = F, #experimental don't use
-                                       do.full.models = F,
+                                       do.full.models = F, # use this option if you don't want to use a datasplit
                                        modeling.id=paste(myRespName,"FirstModeling",sep=""))
   
   # Evaluation
@@ -165,13 +183,13 @@ require(plyr)
 splist <- c(#'Ailanthus altissima', #treeofheaven 
   'Buxus', #Boxwood
   'Juglans nigra',# Black walmnut
-  'Lonicera hispidula', # Honey suckle
-  'Notholithocarpus densiflorus', # Tanoak
-  'Pseudotsuga menziesii',
-  # 'Tamarix chinensis',
-  'Tsuga canadensis',
-  #  'Tsuga caroliniana',
-  'Umbellularia californica' # Bay laurel
+  # 'Lonicera hispidula', # Honey suckle
+  # 'Notholithocarpus densiflorus', # Tanoak
+  # 'Pseudotsuga menziesii',
+  # # 'Tamarix chinensis',
+  # 'Tsuga canadensis',
+  # #  'Tsuga caroliniana',
+  # 'Umbellularia californica' # Bay laurel
 )
 
 sp_ems <- llply(.data=c(1:length(splist)),
