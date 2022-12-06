@@ -1,8 +1,6 @@
 library(renv)
 library(foreach)
 library(rinat)
-renv::init()#renv located in host_data_dl_proj folder
-renv::hydrate()
 
 #GLOBAL: host data downloaders####
 #GBIF####
@@ -17,10 +15,10 @@ get_gbif_obs_ym <- function(sn, date, year, month, status,study.area,tax.key) {
   flds<-c(rgbif::occ_fields,"taxonomicStatus","acceptedScientificName")
     if(year==T & month==F){
       x <- rgbif::occ_search(taxonKey = tax.key,hasCoordinate = T, hasGeospatialIssue = F, 
-                           geometry = study.area, year=year_d, limit=100000, occurrenceStatus = status,fields=flds)} 
+                           geometry = study.area, year=year_d, limit=99999, occurrenceStatus = status,fields=flds)} 
     else if(month==T & year==F){
       x <- rgbif::occ_search(taxonKey = tax.key,hasCoordinate = T, hasGeospatialIssue = F, 
-                           geometry = study.area, year=year_d, month=month_d,limit=100000, occurrenceStatus = status,fields=flds)
+                           geometry = study.area, year=year_d, month=month_d,limit=99999, occurrenceStatus = status,fields=flds)
     }
 }
 
@@ -80,8 +78,7 @@ get_gbif_occs<-function(folder, studyext, sn, tax.rank,date.range){
                                "+proj=longlat +datum=WGS84 +no_defs +type=crs")
     study.area<-terra::ext(study.area)
     study.area<-rgbif::gbif_bbox2wkt(minx = study.area[1],miny =study.area[3],
-                              maxx=study.area[2],maxy=study.area[4])}
-  else{study.area<-gbif_bbox2wkt(minx = -179.9999999,miny=-89.9999999,
+                              maxx=study.area[2],maxy=study.area[4])}else{study.area<-gbif_bbox2wkt(minx = -179.9999999,miny=-89.9999999,
                                     maxx=179.9999999,maxy=89.9999999)}
   if(nchar(date.range[1])>0){date.range<-lubridate::ymd(date.range)}else{
     date.range<-lubridate::ymd("1600-01-01",Sys.Date())
@@ -92,14 +89,14 @@ get_gbif_occs<-function(folder, studyext, sn, tax.rank,date.range){
                                                      lubridate::year(date.range[2])),limit = 1)$meta$count
   flds<-c(rgbif::occ_fields,"taxonomicStatus","acceptedScientificName")
   
-  if(n>0 & n<=100000){
+  if(n>0 & n<=99999){
     gbif.out<-rgbif::occ_search(taxonKey = tax.key, hasCoordinate = T, 
                                 hasGeospatialIssue = F,geometry=study.area,
                                 year=paste0(lubridate::year(date.range[1]),
                                             ",",lubridate::year(date.range[2])),
-                                limit = 100000,fields=flds)
+                                limit = 99999,fields=flds)
     gbif.out<-data.table::as.data.table(gbif.out$data)
-    }else if (n>=100000){
+    }else if (n>=99999){
       yr<-seq.Date(date.range[1],date.range[2], by="year")
       gbif.out<-foreach(i=1:(length(yr)),verbose=T) %do% {
         print(yr[i])
@@ -108,7 +105,7 @@ get_gbif_occs<-function(folder, studyext, sn, tax.rank,date.range){
         n<-x$meta$count
         t1<-yr[i]
         Sys.sleep(3)
-        if(n>100000){
+        if(n>99999){
           t1<-lubridate::ymd(paste0(lubridate::year(t1),"-01","-01"))
           t2<-lubridate::ymd(paste0(lubridate::year(t1)+1,"-01","-01"))
           mo<-seq.Date(t1,t2,by="month")
@@ -124,7 +121,7 @@ get_gbif_occs<-function(folder, studyext, sn, tax.rank,date.range){
           }
           x<-data.table::rbindlist(x,fill=TRUE)
         }
-        else if(n>0 & n<=100000){data.table::as.data.table(x$data)}}
+        else if(n>0 & n<=99999){data.table::as.data.table(x$data)}}
     }else{}
   
   n.a<-rgbif::occ_data(taxonKey = tax.key, hasCoordinate = T, hasGeospatialIssue = F,
@@ -136,10 +133,10 @@ get_gbif_occs<-function(folder, studyext, sn, tax.rank,date.range){
                                   hasGeospatialIssue = F,geometry=study.area,
                                   occurrenceStatus = "ABSENT",
                     year=paste0(lubridate::year(date.range[1]),",",
-                                lubridate::year(date.range[2])),limit = 100000,
+                                lubridate::year(date.range[2])),limit = 99999,
                     fields = flds)
     gbif.out.a<-data.table::as.data.table(gbif.out.a$data)
-    if(n>=100000){gbif.out<-data.table::rbindlist(gbif.out,fill=TRUE)}else{gbif.out}
+    if(n>=99999){gbif.out<-data.table::rbindlist(gbif.out,fill=TRUE)}else{gbif.out}
     gbif.out$occurrenceStatus<-1
     gbif.out.a$occurrenceStatus<-0
     gbif.out<-data.table::rbindlist(list(gbif.out,gbif.out.a),fill=TRUE)
@@ -153,7 +150,7 @@ get_gbif_occs<-function(folder, studyext, sn, tax.rank,date.range){
                                   hasGeospatialIssue = F,geometry=study.area,
                                   occurrenceStatus = "ABSENT",
                                   year=paste0(lubridate::year(date.range[1]),",",
-                                              lubridate::year(date.range[2])),limit = 100000,
+                                              lubridate::year(date.range[2])),limit = 99999,
                                   fields = flds)
     gbif.out.a<-data.table::as.data.table(gbif.out.a$data)
     gbif.out.a$occurrenceStatus<-0
@@ -175,14 +172,14 @@ get_inat_obs_ymd <- function(sn, date, year, month, day, study.area) {
   day_d <- lubridate::day(date)
   tryCatch({
     if(year==T & month==F & day==F){
-      x <- rinat::get_inat_obs(query = sn, maxresults = 10000, year = year_d, 
+      x <- rinat::get_inat_obs(query = sn, maxresults = 9999, year = year_d, 
                                meta = TRUE, bounds=study.area, quality="research")} 
     else if(month==T & year==F & day==F){
-      x <- rinat::get_inat_obs(query = sn, maxresults = 10000, year = year_d, 
+      x <- rinat::get_inat_obs(query = sn, maxresults = 9999, year = year_d, 
                                month=month_d, meta = TRUE, bounds=study.area, quality="research")
     }
     else if(month==F & year==F & day==T){
-      x <- rinat::get_inat_obs(query = sn, maxresults = 10000, year = year_d, 
+      x <- rinat::get_inat_obs(query = sn, maxresults = 9999, year = year_d, 
                                month=month_d, day=day_d, meta = TRUE, bounds, 
                                quality="research")
     }
@@ -224,7 +221,7 @@ get_inat_occs<-function(folder, studyext, sn,date.range) {
     n<-x$meta$found
     t1<-yr[i]
     Sys.sleep(3)
-    if(n>10000){
+    if(n>9999){
       t1<-lubridate::ymd(paste0(lubridate::year(t1),"-01","-01"))
       t2<-lubridate::ymd(paste0(lubridate::year(t1)+1,"-01","-01"))
       mo<-seq.Date(t1,t2,by="month")
@@ -237,13 +234,13 @@ get_inat_occs<-function(folder, studyext, sn,date.range) {
         t1<-mo[j]
         t2<-mo[j+1]
         Sys.sleep(3)
-        if(n>10000){
+        if(n>9999){
           d<-seq.Date(t1,t2,by="day")
           foreach(k=1:(length(d)),.combine="rbind") %do% {
             x<-get_inat_obs_ymd(sn,date=d[k],day=T, year=F, month=F,study.area)
             n<-x$meta$found
             Sys.sleep(3)
-            x$data}}else if(n<=10000){x$data}else{}}}else if(n<=10000){x$data}else{}}
+            x$data}}else if(n<=9999){x$data}else{}}}else if(n<=9999){x$data}else{}}
   
   write.csv(inat.out,paste0(folder,sn,"/inat/",sn,".inat.out.raw.csv"), row.names = F)
   inat.out<-data.table::as.data.table(inat.out)
