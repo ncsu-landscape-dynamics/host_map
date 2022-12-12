@@ -1,6 +1,5 @@
 get_Envi <- function(bio=F, elev=F, gdd=F, lc=F, pop=F, ptime=F, rnr=F, soil=F, tbase=5, res=1){
   require(geodata)
-  require(raster)
   require(terra)
   
   #geodir <- "C:\\Users\\bjselige\\Documents\\geodata\\"

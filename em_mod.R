@@ -3,77 +3,67 @@
 #          threshold, f.score, #threshold creates a thresholded version of the output. f.score allows user to tune this threshold to their use
 #          envi, var.select, #envi allows user to supply own environmental data. var.select allows for turning off variable selection algorithm
 #          bbox, output) #bbox allows user to set own extent, default is sized by extent of the data. output allows for saving outputs locally
-EM_mod <- function(spname){
+EM_mod <- function(spname, usa=F){
   require(biomod2)
   require(plyr)
   require(dismo)
-  require(raster)
+  require(terra)
   require(rgdal)
   require(scales)
   require(stringr)
-  require(klaR)
-  
+
+  source('C:\\Users\\bjselige\\host_map\\get_Envi.R')
+  source('C:\\Users\\bjselige\\host_map\\get_pts.1.R')
+  source('C:\\Users\\bjselige\\host_map\\var.imp.R')
   
   #update w world borders
   borders <- vect('C:\\Users\\bjselige\\Downloads\\ne_10m_admin_0_countries_lakes\\ne_10m_admin_0_countries_lakes.shp')
   
-  
-  
-  # bbox <- c(24.5, -125, 49.5, -66.5)
-  # us_can <- borders[borders$admin%in%c('United States of America', 'Canada'),]#, 'Mexico'),]
-  # us_can <- us_can[which(!us_can$name%in%c('Alaska', 'Hawaii', 'Nunavut', 'Yukon', 'Northwest Territories')),]
-  # l48 <- us_can[which(us_can$admin=='United States of America'),]
-  # us_can <- crop(us_can, extent(l48))
-  
-  # bbox <- c(49.5, -8, 59.5, 2)
-  # uk_main <- borders[borders$admin%in%c('United Kingdom'),]
-  # uk_main <- uk_main[which(!uk_main$region%in%c('Northern Ireland')),]
-  # uk_main <- crop(uk_main, extent(c(bbox[2], bbox[4], bbox[1], bbox[3])))
-  
-  # 
-  source('C:\\Users\\bjselige\\host_map\\get_Envi.R')
-  envi <- get_Envi(rnr=F)
-
-  
+  if(usa==F){envi <- get_Envi(); envi.cv <- list('cluster'=envi$clust); envi <- envi$rast}
+  if(usa==T){
+    bbox <- c(24.5, -125, 49.5, -66.5)
+    us_can <- borders[borders$SOVEREIGNT%in%c('United States of America', 'Canada'),]
+    us_can <- crop(us_can, ext(c(bbox[2], bbox[4], bbox[1], bbox[3])))
+    envi <- get_Envi(bio=T, lc=T, rnr=T, soil=F)
+    envi.cv <- list('cluster'=envi$clust)
+    envi <- terra::crop(x=envi$rast, y=us_can, mask=T)
+  }
   
   # Create clusters of related variables among variables in the environmental layer
-  envi.cc <- corclust(x=data.frame(values(envi)))
-  envi.cp <- plot(envi.cc, mincor=.7, selection='numeric')
-  envi.cv <- cvtree(envi.cc, k=6) #update k so its dynamic
+  # require(klaR)
+  # envi.cc <- corclust(x=data.frame(values(envi)))
+  # envi.cp <- plot(envi.cc, mincor=.7, selection='numeric')
+  # envi.cv <- cvtree(envi.cc, k=6) #update k so its dynamic
   
-  source('C:\\Users\\bjselige\\host_map\\get_pts.1.R')
-  pts <- get_pts.1(spname)
-  pts <- data.frame('longitude'=as.numeric(pts$longitude), 'latitude'=as.numeric(pts$latitude))
-  pts <- pts[which(!is.na(pts$latitude)),]
-  pts <- SpatialPoints(pts, CRS('+proj=longlat +datum=WGS84 +no_defs +ellps=WGS84 +towgs84=0,0,0'))
-  pts <- crop(pts, extent(envi))
-  pts.ras <- rasterize(x=pts, y=envi, fun='count', background=0)
-  pts.ras <- (pts.ras*(envi[[1]]*0+1))>0
-  pts.2 <- rasterToPoints(pts.ras)
-  
-  myRespName <- str_replace(tolower(spname),' ', '_')
-  myResp <- pts.2[, 3] # the presence/absences data for our species
+  # Get observations for species of interest and prep the data for modeling
+  pts <- get_pts.1(spname, bounds=us_can)
+   
+  # if(usa==F){pts <- crop(vect(pts), ext(envi))}
+  # if(usa==T){pts <- crop(vect(pts), us_can)}
+ 
+  pts.r <- terra::rasterize(x=pts, y=envi, fun='length', background=0)
+  pts.r <- (pts.r*(envi[[1]]*0+1))>0
+  pts.2 <- as.points(pts.r) #pts.2 <- rasterToPoints(pts.r)
+  myName <- str_replace(tolower(spname),' ', '_')
+  myResp <- pts.2$lyr1 # the presence/absences data for our species
   myResp[myResp==0] <- NA # setting 'true absences' to NA
-  myRespXY <- pts.2[, c(1,2)] # the XY coordinates of species data
+  myRespXY <- crds(pts.2) # the XY coordinates of species data
   
-  #var impo goes here
-  source('C:\\Users\\bjselige\\host_map\\var.imp.R')
+  #variable importance selection function
   myExpl.sel <- var.select()
-  
   myOptions <- BIOMOD_ModelingOptions()
-  
   myData <- BIOMOD_FormatingData(resp.var = myResp,
                                  expl.var = myExpl.sel,
                                  resp.xy = myRespXY,
-                                 resp.name = myRespName,
+                                 resp.name = myName,
                                  PA.nb.rep = 1,
                                  PA.strategy = 'random',
                                  PA.nb.absences = sum(myResp, na.rm=T))
   
   # Notes on algorithm choice; CTA is redundant with Random Forest, FDA and SRE have relatively low performance
-  myAlgos <- c('GLM', 'GAM', 'MARS', 'GBM',  'RF', 'ANN')#'CTA', 'FDA', 'SRE',  'MAXENT.Phillips','MAXENT.Phillips.2'
+  myAlgos <- c('GLM', 'GAM', 'GBM', 'RF', 'ANN', 'MAXENT.Phillips')#,MARS)#'CTA', 'FDA', 'SRE',  'MAXENT.Phillips','MAXENT.Phillips.2'
   # Notes on evaluation methods : POD/SR/FR is not useful, KAPPA, ACCURACY, TSS, and ETS all get about the same results.
-  myEvals <- c('CSI', 'ROC', 'TSS', 'KAPPA', 'ACCURACY', 'ETS', 'BIAS') #'POD', 'FAR', 'SR'
+  myEvals <- c('CSI', 'ROC', 'TSS', 'ACCURACY', 'ETS', 'BIAS') #'POD', 'FAR', 'SR' ,'KAPPA'
   # 3. Computing the models
   myModels <- biomod2::BIOMOD_Modeling(data=myData, 
                                        models.options = myOptions,
@@ -86,8 +76,7 @@ EM_mod <- function(spname){
                                        SaveObj = T, # recommended to leave true
                                        rescal.all.models = F, #experimental don't use
                                        do.full.models = F, # use this option if you don't want to use a datasplit
-                                       modeling.id=paste(myRespName,"FirstModeling",sep=""))
-  
+                                       modeling.id=paste(myName,"FirstModeling",sep=""))
   # Evaluation
   myEval <- get_evaluations(myModels) # get all models evaluation
   # dimnames(myEval) # print the dimnames of this object
@@ -156,23 +145,22 @@ EM_mod <- function(spname){
   
   ##### 5. Thresholding
   p2 <- p.out
-  trs <- seq(min(values(p2), na.rm=T), max(values(p2), na.rm=T),
-             by=(max(values(p2), na.rm=T) - min(values(p2), na.rm=T))/100)
-  trs.metrics <- ldply(.data=c(1:length(trs)), .fun=function(X){
-    p2.tr <- p2>trs[X]
-    x.zero <- sum(raster::extract(x=p2.tr, y=pts)==0, na.rm=T)/length(pts)
-    x.area <- sum(values(p2.tr), na.rm=T)/length(na.omit(p2[]))
-    x.score <- 1 - x.zero - x.area
-    df.out <- data.frame('trs'=trs[X], 'zero'=x.zero, 'area'=x.area, 'score'=x.score, row.names=trs[X])
-    return(df.out)}, .progress = 'text')
+  trs <- seq(min(values(p2),na.rm=T), max(values(p2),na.rm=T), by=(max(values(p2),na.rm=T)-min(values(p2),na.rm=T))/100)
+  trs.metrics <- ldply(.data=c(1:length(trs)),
+                       .fun=function(X){
+                         p2.tr <- rast(p2>trs[X])
+                         x.zero <- sum(extract(x=p2.tr, y=pts)==0, na.rm=T)/length(pts)
+                         x.area <- sum(values(p2.tr), na.rm=T)/length(na.omit(p2[]))
+                         x.score <- 1 - x.zero - x.area
+                         df.out <- data.frame('trs'=trs[X], 'zero'=x.zero, 'area'=x.area, 'score'=x.score, row.names=trs[X])
+                         return(df.out)
+                       }, .progress = 'text')
   
   tr.best <- trs.metrics[which.max(trs.metrics$score),]
   p.tr <- p.out>tr.best$trs
   p3 <- stack(myProjEM@proj@val[[1]], p.tr); names(p3) <- c('Raw', 'Binary')
   p3 <- stack(p3, myBinaryEM)
-  
   myEval2 <- list(Eval=myEval, Ensemble=myEvalEM, BJS.metrics=list('best'=tr.best, 'full'=trs.metrics))
-  
   outlist <- list(myData, myModels, myEval2, myProj2, p3)
   names(outlist) <- c('Data', 'Model', 'Evaluation', 'Projections', 'Ensemble')
   return(outlist)
@@ -180,22 +168,22 @@ EM_mod <- function(spname){
 
 require(plyr)
 
-splist <- c(#'Ailanthus altissima', #treeofheaven 
+splist <- c(
+  'Ailanthus altissima', #treeofheaven 
   'Buxus', #Boxwood
-  'Juglans nigra',# Black walmnut
+  'Juglans nigra'# Black walmnut
   # 'Lonicera hispidula', # Honey suckle
   # 'Notholithocarpus densiflorus', # Tanoak
   # 'Pseudotsuga menziesii',
-  # # 'Tamarix chinensis',
+  # 'Tamarix chinensis',
   # 'Tsuga canadensis',
-  # #  'Tsuga caroliniana',
+  # 'Tsuga caroliniana',
   # 'Umbellularia californica' # Bay laurel
 )
 
 sp_ems <- llply(.data=c(1:length(splist)),
-                .fun=function(x){EM_mod(splist[[x]])},
+                .fun=function(x){EM_mod(splist[[x]], usa=T)},
                 .progress='text'); names(sp_ems) <- splist
-
 
 # pts <- BIEN::BIEN_occurrence_species(species=spname)
 # pts <-  read.csv('C:\\Users\\bjselige\\Documents\\tree_of_heaven\\Ailanthus.BIEN.csv')  
