@@ -7,7 +7,7 @@ get_Envi <- function(bio=F, elev=F, gdd=F, lc=F, pop=F, ptime=F, rnr=F, soil=F, 
   
   if(bio==T){
     biovar <- worldclim_global(var='bio', res=.5, path=geodir)
-    names(biovar) <-  c('Mean Annual Temp', 'Mean Diurnal Range', 'Isothermality', 'Temp Seasonality',
+    names(biovar) <- c('Mean Annual Temp', 'Mean Diurnal Range', 'Isothermality', 'Temp Seasonality',
                         'Max Temp Warmest Month', 'Min Temp Coldest Month', 'Temp Annual Range',
                         'Mean Temp Wettest Quarter', 'Mean Temp Driest Quarter', 'Mean Temp Warmest Quarter',
                         'Mean Temp Coldest Quarter', 'Annual Precip', 'Precip Wettest Month',

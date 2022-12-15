@@ -5,13 +5,17 @@
 #          bbox, output) #bbox allows user to set own extent, default is sized by extent of the data. output allows for saving outputs locally
 EM_mod <- function(spname, usa=F){
   require(biomod2)
-  require(plyr)
+  require(devtools)
   require(dismo)
-  require(terra)
+  require(plyr)
   require(rgdal)
   require(scales)
   require(stringr)
+  require(terra)
 
+  # source_url(url="https://github.com/ncsu-landscape-dynamics/host_map/blob/9f8d63d5642a09ceccaca0dd86589fb3644c59ba/get_Envi.R")
+  # source_url(url="https://github.com/ncsu-landscape-dynamics/host_map/blob/9f8d63d5642a09ceccaca0dd86589fb3644c59ba/var.imp.R")
+  
   source('C:\\Users\\bjselige\\host_map\\get_Envi.R')
   source('C:\\Users\\bjselige\\host_map\\get_pts.1.R')
   source('C:\\Users\\bjselige\\host_map\\var.imp.R')
@@ -166,24 +170,24 @@ EM_mod <- function(spname, usa=F){
   return(outlist)
 }
 
-require(plyr)
-
-splist <- c(
-  'Ailanthus altissima', #treeofheaven 
-  'Buxus', #Boxwood
-  'Juglans nigra'# Black walmnut
-  # 'Lonicera hispidula', # Honey suckle
-  # 'Notholithocarpus densiflorus', # Tanoak
-  # 'Pseudotsuga menziesii',
-  # 'Tamarix chinensis',
-  # 'Tsuga canadensis',
-  # 'Tsuga caroliniana',
-  # 'Umbellularia californica' # Bay laurel
-)
-
-sp_ems <- llply(.data=c(1:length(splist)),
-                .fun=function(x){EM_mod(splist[[x]], usa=T)},
-                .progress='text'); names(sp_ems) <- splist
+# require(plyr)
+# 
+# splist <- c(
+#   'Ailanthus altissima', #treeofheaven 
+#   'Buxus', #Boxwood
+#   'Juglans nigra'# Black walmnut
+#   # 'Lonicera hispidula', # Honey suckle
+#   # 'Notholithocarpus densiflorus', # Tanoak
+#   # 'Pseudotsuga menziesii',
+#   # 'Tamarix chinensis',
+#   # 'Tsuga canadensis',
+#   # 'Tsuga caroliniana',
+#   # 'Umbellularia californica' # Bay laurel
+# )
+# 
+# sp_ems <- llply(.data=c(1:length(splist)),
+#                 .fun=function(x){EM_mod(splist[[x]], usa=T)},
+#                 .progress='text'); names(sp_ems) <- splist
 
 # pts <- BIEN::BIEN_occurrence_species(species=spname)
 # pts <-  read.csv('C:\\Users\\bjselige\\Documents\\tree_of_heaven\\Ailanthus.BIEN.csv')  
